@@ -1,4 +1,6 @@
+import re
 from pathlib import Path
+from time import time
 
 import click
 
@@ -32,8 +34,19 @@ def cli():
 
 @cli.command('local-llm')
 @click.option('--llm-endpoint')
-def cli_local_llm(llm_endpoint: str):
-    use_case = BuildBlogUseCase(llm=build_local_llm(llm_endpoint))
+@click.option('--output-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
+def cli_local_llm(llm_endpoint: str, output_dir: str):
+    def _persist_summary_to_file(_summary: str, _context: str) -> None:
+        def _sanitize_to_filename(s: str) -> str:
+            sanitized = re.sub(r'\s+', '_', s)
+            sanitized = re.sub(r'[<>:"/\\|?*]', '', sanitized)
+            return sanitized
+
+        output_filepath = Path(output_dir) / (_sanitize_to_filename(_context) + '-' + str(time()))
+        with open(output_filepath, 'w') as f:
+            f.write(_summary)
+
+    use_case = BuildBlogUseCase(llm=build_local_llm(llm_endpoint), persist_summary_func=_persist_summary_to_file)
     use_case.invoke()
 
 
