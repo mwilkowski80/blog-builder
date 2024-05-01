@@ -49,10 +49,8 @@ class GenerateDocusaurusArticlesUseCase:
         if not authors:
             raise ValueError('At least one author is required')
         self._article_author = authors
-        self._slug_to_output_filepath: dict[str, Path] = {}
 
     def invoke(self):
-        self._slug_to_output_filepath.clear()
         for article in self._article_storage.get_all():
             output_filepath = self._output_dir / f'{article.id_}.md'
             if self._skip_existing and output_filepath.exists():
@@ -64,7 +62,6 @@ class GenerateDocusaurusArticlesUseCase:
     def _write_article(self, article: Article) -> None:
         slug = _sanitize_to_slug(article.title) + '-' + _extract_timestamp_from_article_id(article.id_)
         output_filepath = self._output_dir / f'{article.id_}.md'
-        self._slug_to_output_filepath[slug] = output_filepath
         with open(output_filepath, 'w') as f:
             f.write(f'---\n')
             yaml.dump({
@@ -86,12 +83,19 @@ class GenerateDocusaurusArticlesUseCase:
     def _rebuild_static_files(self) -> None:
         self._log.info('Fixing MDX compilation errors')
         for line in self._check_stderr_output().splitlines():
-            m = re.search(r'Error: MDX compilation failed for file "(.*?)"', line)
+            m = re.search(r'Error: MDX compilation failed for file "(.+?)"', line)
             if m:
                 error_filepath = Path(m.group(1))
                 if error_filepath.exists():
                     error_filepath.unlink()
                     self._log.error(f'Deleted {error_filepath} because of error')
+
+        self._log.info('Fixing static files generation')
+        for line in self._check_stderr_output().splitlines():
+            m = re.search(r'Error: Can\'t render static file for pathname "/(.+?)"', line)
+            if m:
+                slug = m.group(1)
+                self.try_delete_slug(slug)
 
         self._log.info('Fixing broken links')
         for line in self._check_stderr_output().splitlines():
@@ -105,8 +109,7 @@ class GenerateDocusaurusArticlesUseCase:
         self._log.info('Rebuilt static files successfully')
 
     def try_delete_slug(self, slug):
-        filepath = self._slug_to_output_filepath.get(slug)
-        if filepath:
+        for filepath in self._find_files_with_slug(slug):
             self._try_unlink(filepath=filepath)
             error_filepath = self._output_dir / (slug + '.md')
             self._try_unlink(filepath=error_filepath)
@@ -116,3 +119,10 @@ class GenerateDocusaurusArticlesUseCase:
 
     def _select_random_author(self) -> str:
         return self._article_author[randint(0, len(self._article_author) - 1)]
+
+    def _find_files_with_slug(self, slug: str) -> List[Path]:
+        output = []
+        run_output = run(['grep', '-irP', f'^slug: {slug}$', self._output_dir], text=True, stdout=PIPE).stdout
+        for line in run_output.splitlines():
+            output.append(Path(line.split(':')[0]))
+        return output
