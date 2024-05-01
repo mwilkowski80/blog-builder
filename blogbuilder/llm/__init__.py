@@ -25,3 +25,8 @@ class LocalLLM(LLM):
             'input_text': input_str})
         r.raise_for_status()
         return r.json()['output']
+
+
+class NoopLLM(LLM):
+    def __call__(self, input_str) -> str:
+        return input_str

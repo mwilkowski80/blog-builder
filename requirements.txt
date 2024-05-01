@@ -3,3 +3,9 @@ requests
 duckduckgo-search
 openai
 structlog
+googlesearch-python
+backoff
+pytest
+tqdm
+jinja2
+pyyaml

@@ -6,13 +6,13 @@ import shutil
 import string
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import Callable, Union, Optional
-from datetime import datetime
+from typing import Callable, Optional, TypeVar, Generic
+
 from structlog.stdlib import get_logger as get_raw_logger
 
-Payload = Union[str, dict, list]
 logger = get_raw_logger(os.path.basename(__file__))
 
 
@@ -33,10 +33,13 @@ class Metadata:
         return {'key': self.key, 'hash-key': self.hash_key, 'created_at': self.created_at.isoformat()}
 
 
+T = TypeVar("T", str, dict, list)
+
+
 @dataclass
-class Cacheable:
+class Cacheable(Generic[T]):
     metadata: Metadata
-    payload: Payload
+    payload: T
 
     @classmethod
     def from_dict(cls, dict_: dict) -> 'Cacheable':
@@ -48,7 +51,7 @@ class Cacheable:
         return {'metadata': self.metadata.to_dict(), 'payload': self.payload}
 
 
-class Cache:
+class Cache(Generic[T]):
     def __init__(self):
         self._log = logging.getLogger(__package__ + '.' + __name__ + '.' + Cache.__name__)
 
@@ -56,7 +59,10 @@ class Cache:
     def hash_key(key: str) -> str:
         return hashlib.md5(key.encode('utf-8')).hexdigest()
 
-    def get(self, key: str, supplier: Callable[[], Payload], prefix_key='') -> Cacheable:
+    def get_raw(self, key: str, supplier: Callable[[], T], prefix_key='') -> T:
+        return self.get(key, supplier, prefix_key).payload
+
+    def get(self, key: str, supplier: Callable[[], T], prefix_key='') -> Cacheable[T]:
         hash_key = prefix_key + Cache.hash_key(key)
         cacheable = self._get_if_exists(hash_key)
         if cacheable:
@@ -78,10 +84,10 @@ class Cache:
             self._persist(cacheable)
         return cacheable
 
-    def _get_if_exists(self, hash_key: str) -> Optional[Cacheable]:
+    def _get_if_exists(self, hash_key: str) -> Optional[Cacheable[T]]:
         raise NotImplementedError()
 
-    def _persist(self, cacheable: Cacheable) -> None:
+    def _persist(self, cacheable: Cacheable[T]) -> None:
         raise NotImplementedError()
 
 
