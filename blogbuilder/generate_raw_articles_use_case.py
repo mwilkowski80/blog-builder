@@ -11,6 +11,7 @@ import requests
 from tqdm import tqdm
 
 from blogbuilder.llm import LLM
+from s8er.cache import Cache
 
 
 def _extract_int_from_llm_output(llm_output: str) -> int:
@@ -55,104 +56,24 @@ class PersistSummaryToFile(PersistSummary):
 
 
 class GenerateRawArticlesUseCase:
-    def __init__(self, llm: LLM, persist_summary: PersistSummary,
+    def __init__(self, topic_generator_func: Callable[[], List[str]],
+                 llm: LLM, persist_summary: PersistSummary,
                  websearch_func: Callable[[str], List[str]],
-                 download_timeout: int) -> None:
+                 download_timeout: int,
+                 check_cache: Cache[bool],
+                 max_llm_payload: int,
+                 ) -> None:
+        self._topic_generator_func = topic_generator_func
         self._llm = llm
         self._persist_summary = persist_summary
         self._websearch_func = websearch_func
         self._log = logging.getLogger(__package__ + '.' + GenerateRawArticlesUseCase.__name__)
         self._download_timeout = download_timeout
-
-    def _get_queries_from_llm(self) -> List[str]:
-        queries_str = self._llm("""
-        I want to create a blog about financial crime and compliance. I consider this topic elementary and very important for wide public. People do not know what financial crime usually is and do not understand the procedures that banks have to undertake to deal with the problem. I want to fill this gap and allow regular people read and understand the topic of financial crime.
-
-        I want to build this blog based on the input from the Internet and analyze the content available in the Internet already. I want to use DuckDuckGo search engine to look for interesting articles. Please generate an exhaustive list of search queries that I should invoke in DuckDuckGo to find articles that I am interested in.
-
-        Please return the results in the following JSON format:
-        {"queries": ["query 1", "query 2", "query 3"]} and so on.
-
-        I want to consume the output automatically, therefore please do not return anything else.
-                """)
-        return json.loads(queries_str)['queries']
-
-    def _get_queries_from_text(self) -> List[str]:
-        return [
-            "what is financial crime", "types of financial crime", "examples of financial crime",
-            "financial crime prevention", "financial crime compliance", "anti-money laundering", "AML procedures",
-            "know your customer KYC", "suspicious activity reports", "financial crime investigations",
-            "financial crime regulations", "financial crime laws", "financial crime enforcement",
-            "financial crime penalties", "financial crime statistics", "financial crime trends",
-            "financial crime case studies", "financial crime news", "financial crime blogs", "financial crime podcasts",
-            "financial crime books", "financial crime documentaries", "financial crime awareness",
-            "financial crime education", "financial crime training", "financial crime jobs", "financial crime careers",
-            "financial crime technology", "financial crime software", "financial crime tools",
-            "financial crime risk assessment", "financial crime risk management", "financial crime compliance programs",
-            "financial crime compliance best practices", "financial crime compliance challenges",
-            "financial crime compliance costs", "financial crime compliance trends", "financial crime compliance news",
-            "financial crime compliance blogs", "financial crime compliance podcasts",
-            "financial crime compliance books", "financial crime compliance certifications",
-            "financial crime compliance jobs", "financial crime compliance careers",
-            "financial institutions and crime prevention", "banks and financial crime",
-            "role of banks in preventing financial crime", "how banks detect financial crime", "bank secrecy act",
-            "USA PATRIOT Act", "FATF recommendations", "Basel AML Index", "FinCEN", "OFAC sanctions",
-            "financial crime in the cryptocurrency industry", "money laundering through real estate",
-            "trade-based money laundering", "financial crime and terrorist financing",
-            "financial crime and organized crime", "financial crime and corruption", "financial crime and tax evasion",
-            "financial crime and fraud", "financial crime and cybercrime", "financial crime and virtual currencies",
-            "financial crime and offshore banking", "financial crime and shell companies",
-            "financial crime and politically exposed persons (PEPs)", "financial crime and beneficial ownership",
-            "financial crime and customer due diligence (CDD)", "financial crime and enhanced due diligence (EDD)",
-            "financial crime and risk-based approach", "financial crime and transaction monitoring",
-            "financial crime and sanctions screening", "financial crime and adverse media screening",
-            "financial crime and red flags", "financial crime and typologies", "financial crime and emerging threats",
-            "financial crime and regulatory compliance", "financial crime and corporate governance",
-            "financial crime and ethics", "financial crime and social responsibility",
-            "impact of financial crime on society", "cost of financial crime", "fighting financial crime",
-            "preventing financial crime", "detecting financial crime", "reporting financial crime",
-            "investigating financial crime", "prosecuting financial crime"]
-
-    def _get_queries_from_text_2(self) -> List[str]:
-        return [
-            "what is financial crime", "types of financial crime", "examples of financial crime",
-            "financial crime prevention", "financial crime compliance", "anti-money laundering", "AML procedures",
-            "know your customer KYC", "suspicious activity reports", "financial crime investigations"]
-
-    def _get_queries_from_text_3(self) -> List[str]:
-        return [
-            "financial crime statistics", "financial crime trends",
-            "financial crime case studies", "financial crime news", "financial crime blogs", "financial crime podcasts",
-            "financial crime books", "financial crime documentaries", "financial crime awareness",
-            "financial crime education", "financial crime training", "financial crime jobs", "financial crime careers",
-            "financial crime technology", "financial crime software", "financial crime tools",
-            "financial crime risk assessment", "financial crime risk management", "financial crime compliance programs",
-            "financial crime compliance best practices", "financial crime compliance challenges",
-            "financial crime compliance costs", "financial crime compliance trends", "financial crime compliance news",
-            "financial crime compliance blogs", "financial crime compliance podcasts",
-            "financial crime compliance books", "financial crime compliance certifications",
-            "financial crime compliance jobs", "financial crime compliance careers",
-            "financial institutions and crime prevention", "banks and financial crime",
-            "role of banks in preventing financial crime", "how banks detect financial crime", "bank secrecy act",
-            "USA PATRIOT Act", "FATF recommendations", "Basel AML Index", "FinCEN", "OFAC sanctions",
-            "financial crime in the cryptocurrency industry", "money laundering through real estate",
-            "trade-based money laundering", "financial crime and terrorist financing",
-            "financial crime and organized crime", "financial crime and corruption", "financial crime and tax evasion",
-            "financial crime and fraud", "financial crime and cybercrime", "financial crime and virtual currencies",
-            "financial crime and offshore banking", "financial crime and shell companies",
-            "financial crime and politically exposed persons (PEPs)", "financial crime and beneficial ownership",
-            "financial crime and customer due diligence (CDD)", "financial crime and enhanced due diligence (EDD)",
-            "financial crime and risk-based approach", "financial crime and transaction monitoring",
-            "financial crime and sanctions screening", "financial crime and adverse media screening",
-            "financial crime and red flags", "financial crime and typologies", "financial crime and emerging threats",
-            "financial crime and regulatory compliance", "financial crime and corporate governance",
-            "financial crime and ethics", "financial crime and social responsibility",
-            "impact of financial crime on society", "cost of financial crime", "fighting financial crime",
-            "preventing financial crime", "detecting financial crime", "reporting financial crime",
-            "investigating financial crime", "prosecuting financial crime"]
+        self._check_cache = check_cache
+        self._max_llm_payload = max_llm_payload
 
     def invoke(self) -> None:
-        queries = self._get_queries_from_text()
+        queries = self._topic_generator_func()
         for query in queries:
             try:
                 urls = self._websearch_func(query)
@@ -190,7 +111,7 @@ Example output 4:
 73
 
 Here is the content of the page:
-{page_html[:12000]}"""
+{page_html[:self._max_llm_payload]}"""
             output = self._llm(llm_query)
             return _extract_int_from_llm_output(output) > 50
 
@@ -201,11 +122,11 @@ Here is the content of the page:
         llm_query = f"""
 Please rewrite the following webpage in a way that it looks like a media article about the following topic: "{topic}". Generate just the article text without formatting. Here is the webpage HTML content that you should rewrite:
  
-f{page_html[:12000]}"""
+f{page_html[:self._max_llm_payload]}"""
         return self._llm(llm_query)
 
-    def _capture_summary(self, query: str, url: str, summary: str) -> None:
-        self._log.info(f'Capturing the summary for the query: {query}')
+    def _persist_summary(self, query: str, url: str, summary: str) -> None:
+        self._log.info(f'Persisting the summary for the query: {query}')
         self._persist_summary.persist(query=query, url=url, summary=summary)
 
     def _process_url(self, query: str, url: str) -> None:
@@ -227,12 +148,21 @@ f{page_html[:12000]}"""
             on_giveup=_giveup_handler,
             max_tries=3)
         def _inner_process_url() -> None:
-            self._log.info(f'Downloading URL: {url}')
-            r = requests.get(url, timeout=self._download_timeout)
-            r.raise_for_status()
-            page_html = r.text
-            if self._check_if_page_is_related_to_phrase(page_html, query):
-                summary = self._summarize_the_page_for_me(page_html, query)
-                self._capture_summary(query=query, url=url, summary=summary)
+            check_cache_key = f'{query}-{url}'
+            if not self._check_cache.exists(check_cache_key):
+                self._log.info(f'Downloading URL: {url}')
+                r = requests.get(url, timeout=self._download_timeout)
+                r.raise_for_status()
+                page_html = r.text
+                if self._check_cache.get_raw(
+                        check_cache_key,
+                        lambda: self._check_if_page_is_related_to_phrase(page_html, query),
+                        'CHECK-'):
+                    summary = self._summarize_the_page_for_me(page_html, query)
+                    self._persist_summary.persist(query=query, url=url, summary=summary)
+                else:
+                    self._log.info(f'Skipping URL-query: {url}-{query}')
+            else:
+                self._log.info(f'Skipping URL-query (based on check cache): {url}-{query}')
 
         _inner_process_url()

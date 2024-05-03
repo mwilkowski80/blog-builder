@@ -52,4 +52,4 @@ class CachedOpenAI:
             chat_response_time=f"{end-start:.2f}s",
             prompt_cost=f"{prompt_cost:.6f}$"
         )
-        return chat_completion.choices[0].message.content
+        return chat_completion.choices[0].message.content.strip()

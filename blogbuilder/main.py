@@ -13,7 +13,8 @@ from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCas
 from blogbuilder.llm import OpenAILLM, LLM, LocalLLM
 from s8er.cache import FilesystemCache
 from s8er.llm import CachedOpenAI
-from .wse import wse_create_cache, wse_google
+from .wse import wse_create_cache, wse_google, wse_ddgs_create_func
+from .topicgenerator import llm_topic_generator_create_func, per_region_topic_generator_create_func
 
 
 def build_openai_llm(cache_dir: str) -> LLM:
@@ -40,16 +41,43 @@ def cli(debug: bool):
                         format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
 
+WEB_SEARCH_ENGINE_MAP = {
+    'google': wse_google,
+    'ddg': wse_ddgs_create_func(20),
+}
+
+
 @cli.command('generate-raw-articles')
 @click.option('--llm-endpoint', required=True)
 @click.option('--cache-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
 @click.option('--output-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
 @click.option('--download-timeout', default=10)
-def cli_local_llm(llm_endpoint: str, cache_dir: str, output_dir: str, download_timeout):
-    cache_func = wse_create_cache(websearch_func=wse_google, cache=FilesystemCache(Path(cache_dir)))
-    use_case = GenerateRawArticlesUseCase(llm=build_local_llm(llm_endpoint),
-                                          persist_summary=PersistSummaryToFile(output_dir),
-                                          websearch_func=cache_func, download_timeout=download_timeout)
+@click.option('--wse', default='google', type=click.Choice(list(WEB_SEARCH_ENGINE_MAP.keys())))
+@click.option('--topic-generator', default='per_country_llm', type=click.Choice(['llm', 'per_country_llm']))
+@click.option('--topic-generator-max-search-queries', default=30)
+@click.option('--max-llm-payload', default=12000)
+def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str, download_timeout: int,
+                              wse: str, topic_generator: str, max_llm_payload: int,
+                              topic_generator_max_search_queries: int):
+    llm = build_local_llm(llm_endpoint)
+
+    if topic_generator == 'llm':
+        topic_generator_func = llm_topic_generator_create_func(
+            llm, topic_generator_max_search_queries)
+    elif topic_generator == 'per_country_llm':
+        inner_generator_func = llm_topic_generator_create_func(
+            llm, topic_generator_max_search_queries)
+        topic_generator_func = per_region_topic_generator_create_func(
+            inner_generator_func)
+    else:
+        raise ValueError(f'Unknown topic generator: {topic_generator}')
+
+    cache = FilesystemCache(Path(cache_dir))
+    cache_func = wse_create_cache(websearch_func=WEB_SEARCH_ENGINE_MAP[wse], cache=cache)
+    use_case = GenerateRawArticlesUseCase(
+        llm=llm, persist_summary=PersistSummaryToFile(output_dir),
+        websearch_func=cache_func, download_timeout=download_timeout, topic_generator_func=topic_generator_func,
+        check_cache=cache, max_llm_payload=max_llm_payload)
     use_case.invoke()
 
 

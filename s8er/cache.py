@@ -59,6 +59,9 @@ class Cache(Generic[T]):
     def hash_key(key: str) -> str:
         return hashlib.md5(key.encode('utf-8')).hexdigest()
 
+    def exists(self, key: str) -> bool:
+        return self._get_if_exists(Cache.hash_key(key)) is not None
+
     def get_raw(self, key: str, supplier: Callable[[], T], prefix_key='') -> T:
         return self.get(key, supplier, prefix_key).payload
 
