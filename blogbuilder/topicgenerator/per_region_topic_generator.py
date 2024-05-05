@@ -241,10 +241,11 @@ countries = (
 )
 
 
-def create_topic_generator_func(inner_topic_generator_func: Callable[[], List[str]]) -> Callable[[], List[str]]:
+def create_topic_generator_func(inner_topic_generator_func: Callable[[], List[str]],
+                                country_count: int) -> Callable[[], List[str]]:
     def _generate() -> List[str]:
         topics = inner_topic_generator_func()
-        country = countries[random.randint(0, len(countries) - 1)][1]
-        return [f'{topic} in {country}' for topic in topics]
+        selected_countries = random.sample(countries, country_count)
+        return [f'{topic} in {country}' for topic in topics for _, country in selected_countries]
 
     return _generate

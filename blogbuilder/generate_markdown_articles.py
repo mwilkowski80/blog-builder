@@ -51,26 +51,37 @@ class GenerateMarkdownArticle:
         self._llm = llm
         self._raw_articles_dir = raw_articles_dir
         self._log = logging.getLogger(self.__class__.__name__)
+        self._articles_processed_counter = 0
 
     def invoke(self) -> None:
         self._log.info(f'Generating blog articles from {self._raw_articles_dir}')
-        counter = 0
+        self._articles_processed_counter = 0
+
+        while True:
+            counter_before_run = self._articles_processed_counter
+            self.do_invoke()
+            if self._articles_processed_counter == counter_before_run:
+                self._log.info(f'No new articles generated, stopping')
+                break
+
+    def do_invoke(self):
         for filename in os.listdir(self._raw_articles_dir):
             if self.output_storage.contains(filename):
                 self._log.debug(f'Skipping {filename} as it already exists')
                 continue
 
             self.process_input_file(filename)
-            counter += 1
-            if counter >= self._max_number_of_articles:
-                self._log.info(f'Generated {counter} articles, stopping')
+            self._articles_processed_counter += 1
+            if self._articles_processed_counter >= self._max_number_of_articles:
+                self._log.info(f'Generated {self._articles_processed_counter} articles, stopping')
                 break
 
     def process_input_file(self, filename):
         with open(os.path.join(self._raw_articles_dir, filename), 'r') as f:
             raw_article = f.read()
 
-        self._log.info(f'Generating article markdown for {filename}')
+        self._log.info(
+            f'Generating article markdown; counter: {self._articles_processed_counter}, filename: {filename}')
         article_markdown = self._generate_blog_article_markdown(raw_article)
         self._log.info(f'Generating article title {filename}')
         article_title = self._generate_title(article_markdown)

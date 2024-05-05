@@ -56,9 +56,10 @@ WEB_SEARCH_ENGINE_MAP = {
 @click.option('--topic-generator', default='per_country_llm', type=click.Choice(['llm', 'per_country_llm']))
 @click.option('--topic-generator-max-search-queries', default=30)
 @click.option('--max-llm-payload', default=12000)
+@click.option('--sample-countries-count', default=5)
 def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str, download_timeout: int,
                               wse: str, topic_generator: str, max_llm_payload: int,
-                              topic_generator_max_search_queries: int):
+                              topic_generator_max_search_queries: int, sample_countries_count: int):
     llm = build_local_llm(llm_endpoint)
 
     if topic_generator == 'llm':
@@ -68,7 +69,7 @@ def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str
         inner_generator_func = llm_topic_generator_create_func(
             llm, topic_generator_max_search_queries)
         topic_generator_func = per_region_topic_generator_create_func(
-            inner_generator_func)
+            inner_generator_func, sample_countries_count)
     else:
         raise ValueError(f'Unknown topic generator: {topic_generator}')
 
