@@ -86,29 +86,31 @@ class GenerateDocusaurusArticlesUseCase:
             m = re.search(r'Error: MDX compilation failed for file "(.+?)"', line)
             if m:
                 error_filepath = Path(m.group(1))
-                if error_filepath.exists():
-                    error_filepath.unlink()
-                    self._log.error(f'Deleted {error_filepath} because of error')
+                self._try_unlink(error_filepath)
 
         self._log.info('Fixing static files generation')
         for line in self._check_stderr_output().splitlines():
             m = re.search(r'Error: Can\'t render static file for pathname "/(.+?)"', line)
             if m:
                 slug = m.group(1)
-                self.try_delete_slug(slug)
+                self._try_delete_slug(slug)
 
         self._log.info('Fixing broken links')
         for line in self._check_stderr_output().splitlines():
             m = re.search(r'Broken link on source page path = /(.+?):', line)
             if m:
                 slug = m.group(1)
-                self.try_delete_slug(slug)
+                self._try_delete_slug(slug)
+            m = re.search(r'Image .+? used in blog/(.+)? not found', line)
+            if m:
+                filename = m.group(1)
+                self._try_delete_filename(filename)
 
         self._log.info('Running final build')
         check_call(['npm', 'run', 'build'], cwd=self._output_dir)
         self._log.info('Rebuilt static files successfully')
 
-    def try_delete_slug(self, slug):
+    def _try_delete_slug(self, slug: str):
         for filepath in self._find_files_with_slug(slug):
             self._try_unlink(filepath=filepath)
             error_filepath = self._output_dir / (slug + '.md')
@@ -126,3 +128,7 @@ class GenerateDocusaurusArticlesUseCase:
         for line in run_output.splitlines():
             output.append(Path(line.split(':')[0]))
         return output
+
+    def _try_delete_filename(self, filename: str) -> None:
+        output_filepath = self._output_dir / filename
+        self._try_unlink(filepath=output_filepath)

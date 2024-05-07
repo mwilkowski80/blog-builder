@@ -1,3 +1,5 @@
-/venv
-/.idea
-/data
+/venv/
+/.idea/
+/data/
+/.backup_passphrase
+/tmp/
