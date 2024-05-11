@@ -9,7 +9,8 @@ import yaml
 from blogbuilder.article_storage.filesystem_storage import FilesystemStorage
 from blogbuilder.generate_docusaurus_articles import GenerateDocusaurusArticlesUseCase
 from blogbuilder.generate_markdown_articles import GenerateMarkdownArticle
-from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile
+from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile, \
+    GenerateRawArticlesWithReadabilityUseCase
 from blogbuilder.llm import OpenAILLM, LLM, LocalLLM
 from s8er.cache import FilesystemCache
 from s8er.llm import CachedOpenAI
@@ -57,9 +58,11 @@ WEB_SEARCH_ENGINE_MAP = {
 @click.option('--topic-generator-max-search-queries', default=30)
 @click.option('--max-llm-payload', default=12000)
 @click.option('--sample-countries-count', default=5)
+@click.option('--use-readibility', is_flag=True)
 def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str, download_timeout: int,
                               wse: str, topic_generator: str, max_llm_payload: int,
-                              topic_generator_max_search_queries: int, sample_countries_count: int):
+                              topic_generator_max_search_queries: int, sample_countries_count: int,
+                              use_readibility: bool):
     llm = build_local_llm(llm_endpoint)
 
     if topic_generator == 'llm':
@@ -75,7 +78,13 @@ def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str
 
     cache = FilesystemCache(Path(cache_dir))
     cache_func = wse_create_cache(websearch_func=WEB_SEARCH_ENGINE_MAP[wse], cache=cache)
-    use_case = GenerateRawArticlesUseCase(
+
+    if use_readibility:
+        use_case_class = GenerateRawArticlesWithReadabilityUseCase
+    else:
+        use_case_class = GenerateRawArticlesUseCase
+
+    use_case = use_case_class(
         llm=llm, persist_summary=PersistSummaryToFile(output_dir),
         websearch_func=cache_func, download_timeout=download_timeout, topic_generator_func=topic_generator_func,
         check_cache=cache, max_llm_payload=max_llm_payload)

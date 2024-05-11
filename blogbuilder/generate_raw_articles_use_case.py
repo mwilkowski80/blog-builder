@@ -1,9 +1,11 @@
 import json
 import logging
+import os
 import re
 import traceback
 from hashlib import md5
 from pathlib import Path
+from subprocess import check_output
 from typing import List, Callable
 
 import backoff as backoff
@@ -93,8 +95,15 @@ class GenerateRawArticlesUseCase:
                               on_backoff=_backoff_handler, on_giveup=_giveup_handler)
         def _inner_check() -> bool:
             self._log.info(f'Checking if the page is related to the phrase: {query}')
-            llm_query = f"""
-I want to create a blog about financial crime compliance. Here is a topic that I want to write about: {query}.
+            llm_query = self._generate_prompt_to_check_if_content_is_related(query, page_html)
+            output = self._llm(llm_query)
+            return _extract_int_from_llm_output(output) > 50
+
+        return _inner_check()
+
+    def _generate_prompt_to_check_if_content_is_related(self, topic: str, content: str) -> str:
+        return f"""
+I want to create a blog about financial crime compliance. Here is a topic that I want to write about: {topic}.
 
 Please check the content of the page below and evaluate how much this topic is related to the page content. Please answer using only a single integer number in scale 0-100 where 0 means completely unrelated and 100 means fully related. Do not output anything else but this number as I want to process the output automatically.
 
@@ -111,11 +120,7 @@ Example output 4:
 73
 
 Here is the content of the page:
-{page_html[:self._max_llm_payload]}"""
-            output = self._llm(llm_query)
-            return _extract_int_from_llm_output(output) > 50
-
-        return _inner_check()
+{content[:self._max_llm_payload]}"""
 
     def _summarize_the_page_for_me(self, page_html: str, topic: str) -> str:
         self._log.info(f'Summarizing the page for the topic: {topic}')
@@ -150,15 +155,13 @@ f{page_html[:self._max_llm_payload]}"""
         def _inner_process_url() -> None:
             check_cache_key = f'{query}-{url}'
             if not self._check_cache.exists(check_cache_key):
-                self._log.info(f'Downloading URL: {url}')
-                r = requests.get(url, timeout=self._download_timeout)
-                r.raise_for_status()
-                page_html = r.text
-                if self._check_cache.get_raw(
+                self._log.info(f'About to obtain content for topic: {query} from URL: {url}')
+                page_content = self._obtain_content_from_url(url)
+                if page_content and page_content.strip() and self._check_cache.get_raw(
                         check_cache_key,
-                        lambda: self._check_if_page_is_related_to_phrase(page_html, query),
+                        lambda: self._check_if_page_is_related_to_phrase(page_content, query),
                         'CHECK-'):
-                    summary = self._summarize_the_page_for_me(page_html, query)
+                    summary = self._summarize_the_page_for_me(page_content, query)
                     self._persist_summary.persist(query=query, url=url, summary=summary)
                 else:
                     self._log.info(f'Skipping URL-query: {url}-{query}')
@@ -166,3 +169,47 @@ f{page_html[:self._max_llm_payload]}"""
                 self._log.info(f'Skipping URL-query (based on check cache): {url}-{query}')
 
         _inner_process_url()
+
+    def _obtain_content_from_url(self, url: str) -> str:
+        r = requests.get(url, timeout=self._download_timeout)
+        r.raise_for_status()
+        page_content = r.text
+        return page_content
+
+
+class GenerateRawArticlesWithReadabilityUseCase(GenerateRawArticlesUseCase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def _obtain_content_from_url(self, url: str) -> str:
+        return check_output(['node', 'extract-article.js', '--url', url], text=True,
+                            cwd=Path(os.getcwd()) / 'extract-article')
+
+    def _summarize_the_page_for_me(self, page_html: str, topic: str) -> str:
+        self._log.info(f'Summarizing the page for the topic: {topic}')
+        llm_query = f"""
+Please rewrite the following article in a way that it looks like a media article about the following topic: "{topic}". Generate just the article text without formatting. Here is the article content that you should rewrite:
+
+f{page_html[:self._max_llm_payload]}"""
+        return self._llm(llm_query)
+
+    def _generate_prompt_to_check_if_content_is_related(self, topic: str, content: str) -> str:
+        return f"""
+I want to create a blog about financial crime compliance. Here is a topic that I want to write about: {topic}.
+
+Please check the content of the article below and evaluate how much this topic is related to the article. Please answer using only a single integer number in scale 0-100 where 0 means completely unrelated and 100 means fully related. Do not output anything else but this number as I want to process the output automatically.
+
+Example output 1:
+0
+
+Example output 2:
+30
+
+Example output 3:
+100
+
+Example output 4:
+73
+
+Here is the content of the article:
+{content[:self._max_llm_payload]}"""

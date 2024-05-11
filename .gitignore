@@ -4,3 +4,4 @@
 /.backup_passphrase
 /tmp/
 __pycache__/
+node_modules/
