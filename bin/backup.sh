@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euox pipefail
 
 remote_backup_location="${REMOTE_BACKUP_LOCATION}"
 bindir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euox pipefail
 
 bindir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 projdir="$(cd "$bindir/.." && pwd)"

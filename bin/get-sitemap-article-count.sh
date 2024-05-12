@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euox pipefail
 curl -s https://financialcrime.world/sitemap.xml | xmllint -format - | grep '<loc>' | wc -l
