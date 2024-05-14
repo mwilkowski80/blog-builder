@@ -97,13 +97,15 @@ def cli_generate_raw_articles(llm_endpoint: str, cache_dir: str, output_dir: str
 @click.option('--llm-endpoint', required=True)
 @click.option('--max-number-of-articles', default=10)
 @click.option('--max-retries-per-article', default=3)
+@click.option('--max-llm-payload', default=12000)
 def cli_generate_markdown_articles(
         raw_articles_dir: str, output_dir: str, llm_endpoint: str,
-        max_number_of_articles: int, max_retries_per_article: int):
+        max_number_of_articles: int, max_retries_per_article: int,
+        max_llm_payload: int):
     GenerateMarkdownArticle(
         raw_articles_dir=raw_articles_dir, output_storage=FilesystemStorage(Path(output_dir)),
         llm=build_local_llm(llm_endpoint), max_number_of_articles=max_number_of_articles,
-        max_retries_per_article=max_retries_per_article).invoke()
+        max_retries_per_article=max_retries_per_article, max_llm_payload=max_llm_payload).invoke()
 
 
 @cli.command('generate-docusaurus-articles')

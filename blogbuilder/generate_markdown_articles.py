@@ -44,7 +44,8 @@ def _remove_last_line(text: Optional[str]) -> Optional[str]:
 
 class GenerateMarkdownArticle:
     def __init__(self, raw_articles_dir: str, output_storage: ArticleStorage,
-                 llm: LLM, max_number_of_articles: int, max_retries_per_article: int) -> None:
+                 llm: LLM, max_number_of_articles: int, max_retries_per_article: int,
+                 max_llm_payload: int) -> None:
         self.output_storage = output_storage
         self._max_retries_per_article = max_retries_per_article
         self._max_number_of_articles = max_number_of_articles
@@ -52,6 +53,7 @@ class GenerateMarkdownArticle:
         self._raw_articles_dir = raw_articles_dir
         self._log = logging.getLogger(self.__class__.__name__)
         self._articles_processed_counter = 0
+        self._max_llm_payload = max_llm_payload
 
     def invoke(self) -> None:
         self._log.info(f'Generating blog articles from {self._raw_articles_dir}')
@@ -99,7 +101,7 @@ class GenerateMarkdownArticle:
         prompt = f"""Please convert the given article text into an article following markdown format. Please generate proper headings, subheadings, and bullet points.
         
         Here is the raw article text:
-        {raw_article_text}
+        {raw_article_text[:self._max_llm_payload]}
         """
         llm_response = self._llm(prompt)
         if llm_response.startswith('```'):
