@@ -2,13 +2,11 @@ screen bash -c 'cd /samsung-850evo/llm/ && ./venv/bin/python -m uvicorn serve:ap
 title llm-serve
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-markdown-articles --ollama-endpoint http://localhost:11434/api/generate --ollama-extra-args
-{"model":"llama3:8b-instruct-q8_0"} --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-markdown-articles --llm-endpoint http://localhost:19081/generate --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000'
 title blog-builder-generate-markdown-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-raw-articles --ollama-endpoint http://localhost:11434/api/generate --ollama-extra-args
-{"model":"llama3:8b-instruct-q8_0"} --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 12000 --use-readibility'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 12000 --use-readibility'
 title blog-builder-generate-raw-articles
 split
 focus

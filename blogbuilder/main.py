@@ -11,8 +11,9 @@ from blogbuilder.article_storage.filesystem_storage import FilesystemStorage
 from blogbuilder.generate_docusaurus_articles import GenerateDocusaurusArticlesUseCase
 from blogbuilder.generate_markdown_articles import GenerateMarkdownArticle
 from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile, \
-    GenerateRawArticlesWithReadabilityUseCase
+    GenerateRawArticles2UseCase
 from blogbuilder.llm import OpenAILLM, LLM, LocalLLM, OllamaLLM
+from blogbuilder.obtaincontent import obtain_content_from_url_func
 from s8er.cache import FilesystemCache
 from s8er.llm import CachedOpenAI
 from .wse import wse_create_cache, wse_google, wse_ddgs_create_func
@@ -65,12 +66,12 @@ WEB_SEARCH_ENGINE_MAP = {
 @click.option('--topic-generator-max-search-queries', default=30)
 @click.option('--max-llm-payload', default=12000)
 @click.option('--sample-countries-count', default=5)
-@click.option('--use-readibility', is_flag=True)
+@click.option('--version', type=click.Choice(['v1', 'v2']), default='v2')
 def cli_generate_raw_articles(llm_endpoint: str, ollama_endpoint: str, ollama_extra_args: str,
                               cache_dir: str, output_dir: str, download_timeout: int,
                               wse: str, topic_generator: str, max_llm_payload: int,
                               topic_generator_max_search_queries: int, sample_countries_count: int,
-                              use_readibility: bool):
+                              version: str):
     llm = build_llm_from_args(llm_endpoint=llm_endpoint,
                               ollama_endpoint=ollama_endpoint,
                               ollama_extra_args=ollama_extra_args)
@@ -89,15 +90,17 @@ def cli_generate_raw_articles(llm_endpoint: str, ollama_endpoint: str, ollama_ex
     cache = FilesystemCache(Path(cache_dir))
     cache_func = wse_create_cache(websearch_func=WEB_SEARCH_ENGINE_MAP[wse], cache=cache)
 
-    if use_readibility:
-        use_case_class = GenerateRawArticlesWithReadabilityUseCase
+    kwargs = dict()
+    if version == 'v2':
+        use_case_class = GenerateRawArticles2UseCase
+        kwargs['obtain_content_func'] = obtain_content_from_url_func(timeout=download_timeout)
     else:
         use_case_class = GenerateRawArticlesUseCase
 
     use_case = use_case_class(
         llm=llm, persist_summary=PersistSummaryToFile(output_dir),
         websearch_func=cache_func, download_timeout=download_timeout, topic_generator_func=topic_generator_func,
-        check_cache=cache, max_llm_payload=max_llm_payload)
+        check_cache=cache, max_llm_payload=max_llm_payload, **kwargs)
     use_case.invoke()
 
 

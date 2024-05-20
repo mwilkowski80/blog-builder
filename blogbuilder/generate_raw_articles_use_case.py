@@ -96,8 +96,14 @@ class GenerateRawArticlesUseCase:
         def _inner_check() -> bool:
             self._log.info(f'Checking if the page is related to the phrase: {query}')
             llm_query = self._generate_prompt_to_check_if_content_is_related(query, page_html)
-            output = self._llm(llm_query)
-            return _extract_int_from_llm_output(output) > 50
+            output = self._llm(llm_query).strip().upper().replace('\\', '').replace('_', '').replace(' ', '')
+            if not output.startswith('CANNOTPROCESS') and \
+                    not output.startswith('UNRELATED') and \
+                    not output.startswith('SOMEWHATRELATED') and \
+                    not output.startswith('STRONGLYRELATED') and \
+                    not output.startswith('FULLYRELATED'):
+                raise ValueError(f'Unexpected output: "{output}"')
+            return output.startswith('STRONGLYRELATED') or output.startswith('FULLYRELATED')
 
         return _inner_check()
 
@@ -105,19 +111,36 @@ class GenerateRawArticlesUseCase:
         return f"""
 I want to create a blog about financial crime compliance. Here is a topic that I want to write about: {topic}.
 
-Please check the content of the page below and evaluate how much this topic is related to the page content. Please answer using only a single integer number in scale 0-100 where 0 means completely unrelated and 100 means fully related. Do not output anything else but this number as I want to process the output automatically.
+Please check the content below and evaluate how much this topic is related to the page content. I am looking for one of the answers:
+- CANNOT_PROCESS - you cannot process the text, i.e. it is unreadable or encoded in unreadable format
+- UNRELATED - text is very unrelated to the topic
+- SOMEWHAT_RELATED - text is somewhat related to the topic
+- STRONGLY_RELATED - text is strongly related to the topic
+- FULLY_RELATED - text is fully related to the topic
+
+Please answer only with one of the above terms:
+CANNOT_PROCESS
+UNRELATED
+SOMEWHAT_RELATED
+STRONGLY_RELATED
+FULLY_RELATED
+
+Do not output anything else but one of the above terms as I want to process the output automatically.
 
 Example output 1:
-0
+UNREADABLE
 
 Example output 2:
-30
+UNRELATED
 
 Example output 3:
-100
+SOMEWHAT_RELATED
 
 Example output 4:
-73
+STRONGLY_RELATED
+
+Example output 5:
+FULLY_RELATED
 
 Here is the content of the page:
 {content[:self._max_llm_payload]}"""
@@ -177,13 +200,13 @@ f{page_html[:self._max_llm_payload]}"""
         return page_content
 
 
-class GenerateRawArticlesWithReadabilityUseCase(GenerateRawArticlesUseCase):
-    def __init__(self, **kwargs):
+class GenerateRawArticles2UseCase(GenerateRawArticlesUseCase):
+    def __init__(self, obtain_content_func: Callable[[str], str], **kwargs):
         super().__init__(**kwargs)
+        self._obtain_content_func = obtain_content_func
 
     def _obtain_content_from_url(self, url: str) -> str:
-        return check_output(['node', 'extract-article.js', '--url', url], text=True,
-                            cwd=Path(os.getcwd()) / 'extract-article')
+        return self._obtain_content_func(url)
 
     def _summarize_the_page_for_me(self, page_html: str, topic: str) -> str:
         self._log.info(f'Summarizing the page for the topic: {topic}')
@@ -195,21 +218,41 @@ f{page_html[:self._max_llm_payload]}"""
 
     def _generate_prompt_to_check_if_content_is_related(self, topic: str, content: str) -> str:
         return f"""
-I want to create a blog about financial crime compliance. Here is a topic that I want to write about: {topic}.
+Here is the content of the page:
+===
+{content[:self._max_llm_payload]}
+===
 
-Please check the content of the article below and evaluate how much this topic is related to the article. Please answer using only a single integer number in scale 0-100 where 0 means completely unrelated and 100 means fully related. Do not output anything else but this number as I want to process the output automatically.
+I want to create a blog about financial crime compliance.
+
+Please check the content of the page above and evaluate how much it is related to the topic: {topic}. I am looking for one of the answers:
+- CANNOT_PROCESS - you cannot process the text, i.e. it is unreadable or encoded in unreadable format
+- UNRELATED - text is very unrelated to the topic
+- SOMEWHAT_RELATED - text is somewhat related to the topic
+- STRONGLY_RELATED - text is strongly related to the topic
+- FULLY_RELATED - text is fully related to the topic
+
+Please answer only with one of the above terms:
+CANNOT_PROCESS
+UNRELATED
+SOMEWHAT_RELATED
+STRONGLY_RELATED
+FULLY_RELATED
+
+Do not output anything else but one of the above terms as I want to process the output automatically.
 
 Example output 1:
-0
+UNREADABLE
 
 Example output 2:
-30
+UNRELATED
 
 Example output 3:
-100
+SOMEWHAT_RELATED
 
 Example output 4:
-73
+STRONGLY_RELATED
 
-Here is the content of the article:
-{content[:self._max_llm_payload]}"""
+Example output 5:
+FULLY_RELATED
+"""
