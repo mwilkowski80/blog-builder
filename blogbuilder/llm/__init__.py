@@ -27,6 +27,17 @@ class LocalLLM(LLM):
         return r.json()['output']
 
 
+class OllamaLLM(LLM):
+    def __init__(self, endpoint: str, extra_args: dict) -> None:
+        self._endpoint = endpoint
+        self._extra_args = extra_args | {'stream': False}
+
+    def __call__(self, input_str: str) -> str:
+        r = requests.post(self._endpoint, json={'prompt': input_str, **self._extra_args})
+        r.raise_for_status()
+        return r.json()['response']
+
+
 class NoopLLM(LLM):
     def __call__(self, input_str) -> str:
         return input_str
