@@ -6,7 +6,7 @@ screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/b
 title blog-builder-generate-markdown-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 12000 --use-readibility'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000'
 title blog-builder-generate-raw-articles
 split
 focus
