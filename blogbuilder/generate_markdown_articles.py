@@ -83,7 +83,7 @@ class GenerateMarkdownArticle:
             raw_article = f.read()
 
         self._log.info(
-            f'Generating article markdown; counter: {self._articles_processed_counter}, filename: {filename}')
+            f'Generating article markdown; counter: {self._articles_processed_counter}, length: {len(raw_article)}, filename: {filename}')
         article_markdown = self._generate_blog_article_markdown(raw_article)
         self._log.info(f'Generating article title {filename}')
         article_title = self._generate_title(article_markdown)

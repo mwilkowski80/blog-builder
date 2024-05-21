@@ -94,7 +94,7 @@ class GenerateRawArticlesUseCase:
         @backoff.on_exception(backoff.expo, Exception, max_tries=3,
                               on_backoff=_backoff_handler, on_giveup=_giveup_handler)
         def _inner_check() -> bool:
-            self._log.info(f'Checking if the page is related to the phrase: {query}')
+            self._log.info(f'Checking if the page (len: {len(page_html)}) is related to the phrase: {query}')
             llm_query = self._generate_prompt_to_check_if_content_is_related(query, page_html)
             output = self._llm(llm_query).strip().upper().replace('\\', '').replace('_', '').replace(' ', '')
             if not output.startswith('CANNOTPROCESS') and \
@@ -146,7 +146,7 @@ Here is the content of the page:
 {content[:self._max_llm_payload]}"""
 
     def _summarize_the_page_for_me(self, page_html: str, topic: str) -> str:
-        self._log.info(f'Summarizing the page for the topic: {topic}')
+        self._log.info(f'Summarizing the page. Length: {len(page_html)}. Topic: {topic}')
         llm_query = f"""
 Please rewrite the following webpage in a way that it looks like a media article about the following topic: "{topic}". Generate just the article text without formatting. Here is the webpage HTML content that you should rewrite:
  
@@ -209,7 +209,7 @@ class GenerateRawArticles2UseCase(GenerateRawArticlesUseCase):
         return self._obtain_content_func(url)
 
     def _summarize_the_page_for_me(self, page_html: str, topic: str) -> str:
-        self._log.info(f'Summarizing the page for the topic: {topic}')
+        self._log.info(f'Summarizing the page. Length: {len(page_html)}. Topic: {topic}')
         llm_query = f"""
 Please rewrite the following article in a way that it looks like a media article about the following topic: "{topic}". Generate just the article text without formatting. Here is the article content that you should rewrite:
 
