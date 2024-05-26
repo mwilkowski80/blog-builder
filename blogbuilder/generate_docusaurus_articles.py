@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 from random import randint
 from subprocess import run, check_call, PIPE
-from typing import List
+from typing import List, Tuple
 
 import yaml
 
@@ -40,7 +40,8 @@ def _extract_timestamp_from_article_id(article_id: str) -> str:
 class GenerateDocusaurusArticlesUseCase:
     def __init__(
             self, article_storage: ArticleStorage, output_dir: Path, skip_existing: bool,
-            article_date: date, authors: List[str]) -> None:
+            article_date: date, authors: List[str], max_attempts: int) -> None:
+        self._max_attempts = max_attempts
         self._article_storage = article_storage
         self._output_dir = output_dir
         self._skip_existing = skip_existing
@@ -81,34 +82,34 @@ class GenerateDocusaurusArticlesUseCase:
             self._log.error(f'Deleted {filepath} because of error')
 
     def _rebuild_static_files(self) -> None:
-        self._log.info('Fixing MDX compilation errors')
-        for line in self._check_stderr_output().splitlines():
-            m = re.search(r'Error: MDX compilation failed for file "(.+?)"', line)
-            if m:
-                error_filepath = Path(m.group(1))
-                self._try_unlink(error_filepath)
+        self._log.info('_rebuild_static_files() invoked')
 
-        self._log.info('Fixing static files generation')
-        for line in self._check_stderr_output().splitlines():
-            m = re.search(r'Error: Can\'t render static file for pathname "/(.+?)"', line)
-            if m:
-                slug = m.group(1)
-                self._try_delete_slug(slug)
+        for i in range(0, self._max_attempts):
+            return_code, stderr_output = self._check_stderr_output()
+            if return_code == 0:
+                self._log.info('Rebuilt static files successfully')
+                return
 
-        self._log.info('Fixing broken links')
-        for line in self._check_stderr_output().splitlines():
-            m = re.search(r'Broken link on source page path = /(.+?):', line)
-            if m:
-                slug = m.group(1)
-                self._try_delete_slug(slug)
-            m = re.search(r'Image .+? used in blog/(.+)? not found', line)
-            if m:
-                filename = m.group(1)
-                self._try_delete_filename(filename)
+            self._log.info('Errors found, trying to fix them')
+            for line in stderr_output.splitlines():
+                m = re.search(r'Error: MDX compilation failed for file "(.+?)"', line)
+                if m:
+                    error_filepath = Path(m.group(1))
+                    self._try_unlink(error_filepath)
+                m = re.search(r'Error: Can\'t render static file for pathname "/(.+?)"', line)
+                if m:
+                    slug = m.group(1)
+                    self._try_delete_slug(slug)
+                m = re.search(r'Broken link on source page path = /(.+?):', line)
+                if m:
+                    slug = m.group(1)
+                    self._try_delete_slug(slug)
+                m = re.search(r'Image .+? used in blog/(.+)? not found', line)
+                if m:
+                    filename = m.group(1)
+                    self._try_delete_filename(filename)
 
-        self._log.info('Running final build')
-        check_call(['npm', 'run', 'build'], cwd=self._output_dir)
-        self._log.info('Rebuilt static files successfully')
+        raise Exception('Failed to rebuild static files')
 
     def _try_delete_slug(self, slug: str):
         for filepath in self._find_files_with_slug(slug):
@@ -116,8 +117,9 @@ class GenerateDocusaurusArticlesUseCase:
             error_filepath = self._output_dir / (slug + '.md')
             self._try_unlink(filepath=error_filepath)
 
-    def _check_stderr_output(self) -> str:
-        return str(run(['npm', 'run', 'build'], cwd=self._output_dir, text=True, stderr=PIPE).stderr)
+    def _check_stderr_output(self) -> Tuple[int, str]:
+        run_output = run(['npm', 'run', 'build'], cwd=self._output_dir, text=True, stderr=PIPE)
+        return run_output.returncode, run_output.stderr
 
     def _select_random_author(self) -> str:
         return self._article_author[randint(0, len(self._article_author) - 1)]

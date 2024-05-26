@@ -146,9 +146,11 @@ def cli_generate_markdown_articles(
 @click.option('--article-date', default=date.today().isoformat())
 @click.option('--authors')
 @click.option('--authors-yml-file', type=click.File(), required=False)
+@click.option('--max-attempts', default=10)
 def cli_generate_docusaurus_articles(
         markdown_articles_dir: str, output_dir: str, skip_existing: bool,
-        article_date: str, authors: Optional[str], authors_yml_file: Optional[TextIO]):
+        article_date: str, authors: Optional[str], authors_yml_file: Optional[TextIO],
+        max_attempts: int):
     def _build_authors_list() -> List[str]:
         if authors:
             return authors.split(',')
@@ -160,7 +162,8 @@ def cli_generate_docusaurus_articles(
     GenerateDocusaurusArticlesUseCase(
         article_storage=FilesystemStorage(Path(markdown_articles_dir)),
         output_dir=Path(output_dir), skip_existing=skip_existing,
-        article_date=date.fromisoformat(article_date), authors=_build_authors_list()).invoke()
+        article_date=date.fromisoformat(article_date), authors=_build_authors_list(),
+        max_attempts=max_attempts).invoke()
 
 
 if __name__ == '__main__':
