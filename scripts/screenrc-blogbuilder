@@ -10,7 +10,7 @@ screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/b
 title blog-builder-generate-raw-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && ./bin/pipeline.sh ; bash'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && (./bin/pipeline.sh 2>&1 | tee ./tmp/output.log); bash'
 title pipeline
 split
 focus
