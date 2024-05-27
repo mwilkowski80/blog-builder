@@ -87,7 +87,7 @@ class GenerateDocusaurusArticlesUseCase:
         for i in range(0, self._max_attempts):
             return_code, stderr_output = self._check_stderr_output()
             if return_code == 0:
-                self._log.info('Rebuilt static files successfully')
+                self._log.info(f'Rebuilt static files successfully. Run index: {i}')
                 return
 
             self._log.info('Errors found, trying to fix them')
@@ -109,7 +109,7 @@ class GenerateDocusaurusArticlesUseCase:
                     filename = m.group(1)
                     self._try_delete_filename(filename)
 
-        raise Exception('Failed to rebuild static files')
+        raise Exception('Failed to rebuild static files. Last index: {i}')
 
     def _try_delete_slug(self, slug: str):
         for filepath in self._find_files_with_slug(slug):
