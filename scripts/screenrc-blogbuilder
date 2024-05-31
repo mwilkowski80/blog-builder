@@ -2,7 +2,7 @@ screen bash -c 'cd /samsung-850evo/llm/ && ./venv/bin/python -m uvicorn serve:ap
 title llm-serve
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && (while true; do ./venv/bin/python -m blogbuilder.main generate-markdown-articles --llm-endpoint http://localhost:19081/generate --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000; sleep 5; done)'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && (while true; do ./venv/bin/python -m blogbuilder.main generate-markdown-articles --llm-endpoint http://localhost:19081/generate --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000; sleep 60; done)'
 title blog-builder-generate-markdown-articles
 split
 focus
