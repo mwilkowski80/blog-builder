@@ -2,15 +2,15 @@ screen bash -c 'cd /samsung-850evo/llm/ && ./venv/bin/python -m uvicorn serve:ap
 title llm-serve
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-markdown-articles --llm-endpoint http://localhost:19081/generate --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && (while true; do ./venv/bin/python -m blogbuilder.main generate-markdown-articles --llm-endpoint http://localhost:19081/generate --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000; sleep 5; done)'
 title blog-builder-generate-markdown-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 40 && ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 50 && (while true; do ./venv/bin/pip install --upgrade -r requirements.txt; ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000 ; sleep 5; ./venv/bin/python -m blogbuilder.main generate-raw-articles --llm-endpoint http://localhost:19081/generate --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000; sleep 5; done)'
 title blog-builder-generate-raw-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && (./bin/pipeline.sh 2>&1 | tee ./tmp/output.log); bash'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && (while true; do (./bin/pipeline.sh 2>&1 | tee ./tmp/output.log); sleep 43200; done)'
 title pipeline
 split
 focus
