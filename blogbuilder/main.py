@@ -8,7 +8,7 @@ import click
 import yaml
 
 from blogbuilder.article_storage.filesystem_storage import FilesystemStorage
-from blogbuilder.generate_docusaurus_articles import GenerateDocusaurusArticlesUseCase
+from blogbuilder.generate_docusaurus_articles import GenerateDocusaurusArticlesUseCase, SanitizeOperations
 from blogbuilder.generate_markdown_articles import GenerateMarkdownArticle
 from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile, \
     GenerateRawArticles2UseCase
@@ -142,6 +142,7 @@ def cli_generate_markdown_articles(
 @cli.command('generate-docusaurus-articles')
 @click.option('--markdown-articles-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
 @click.option('--output-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
+@click.option('--operation-log-path', required=True, type=click.Path(dir_okay=False, file_okay=True, exists=True))
 @click.option('--skip-existing', is_flag=True)
 @click.option('--article-date', default=date.today().isoformat())
 @click.option('--authors')
@@ -150,7 +151,7 @@ def cli_generate_markdown_articles(
 def cli_generate_docusaurus_articles(
         markdown_articles_dir: str, output_dir: str, skip_existing: bool,
         article_date: str, authors: Optional[str], authors_yml_file: Optional[TextIO],
-        max_attempts: int):
+        max_attempts: int, operation_log_path: str):
     def _build_authors_list() -> List[str]:
         if authors:
             return authors.split(',')
@@ -163,7 +164,9 @@ def cli_generate_docusaurus_articles(
         article_storage=FilesystemStorage(Path(markdown_articles_dir)),
         output_dir=Path(output_dir), skip_existing=skip_existing,
         article_date=date.fromisoformat(article_date), authors=_build_authors_list(),
-        max_attempts=max_attempts).invoke()
+        max_attempts=max_attempts,
+        sanitize_operations=SanitizeOperations(output_dir=Path(output_dir), operation_log_path=Path(operation_log_path))
+    ).invoke()
 
 
 if __name__ == '__main__':

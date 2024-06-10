@@ -13,4 +13,5 @@ source venv/bin/activate
   --output-dir /storage/financial-crime-world-website/blog \
   --markdown-articles-dir ./data/markdown-articles \
   --authors-yml-file /storage/financial-crime-world-website/blog/authors.yml \
+  --operation-log-path "$projdir"/data/generate-docusaurus-operation-log.json \
   --skip-existing
