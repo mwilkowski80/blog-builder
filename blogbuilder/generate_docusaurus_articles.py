@@ -113,7 +113,7 @@ class GenerateDocusaurusArticlesUseCase:
         self._log = logging.getLogger(self.__class__.__name__)
         self._article_date = article_date
         self._sanitize_operations = sanitize_operations
-        self._build_dir = output_dir / 'build'
+        self._build_dir = output_dir / '..' / 'build'
         if not authors:
             raise ValueError('At least one author is required')
         self._article_author = authors
