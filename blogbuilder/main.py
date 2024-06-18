@@ -9,6 +9,7 @@ import yaml
 
 from blogbuilder.article_storage.filesystem_storage import FilesystemStorage
 from blogbuilder.generate_docusaurus_articles import GenerateDocusaurusArticlesUseCase, SanitizeOperations
+from blogbuilder.generate_hugo_articles import GenerateHugoArticlesUseCase
 from blogbuilder.generate_markdown_articles import GenerateMarkdownArticle
 from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile, \
     GenerateRawArticles2UseCase
@@ -166,6 +167,34 @@ def cli_generate_docusaurus_articles(
         article_date=date.fromisoformat(article_date), authors=_build_authors_list(),
         max_attempts=max_attempts,
         sanitize_operations=SanitizeOperations(output_dir=Path(output_dir), operation_log_path=Path(operation_log_path))
+    ).invoke()
+
+
+@cli.command('generate-hugo-articles')
+@click.option('--markdown-articles-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
+@click.option('--output-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
+@click.option('--skip-existing', is_flag=True)
+@click.option('--article-date', default=date.today().isoformat())
+@click.option('--max-attempts', default=10)
+@click.option('--authors')
+@click.option('--authors-yml-file', type=click.File(), required=False)
+def cli_generate_hugo_articles(
+        markdown_articles_dir: str, output_dir: str, skip_existing: bool,
+        article_date: str, authors: Optional[str], authors_yml_file: Optional[TextIO],
+        max_attempts: int):
+    def _build_authors_list() -> List[str]:
+        if authors:
+            return authors.split(',')
+        elif authors_yml_file:
+            return list(yaml.safe_load(authors_yml_file).keys())
+        else:
+            raise ValueError('At least one author is required')
+
+    GenerateHugoArticlesUseCase(
+        article_storage=FilesystemStorage(Path(markdown_articles_dir)),
+        output_dir=Path(output_dir), skip_existing=skip_existing,
+        article_date=date.fromisoformat(article_date), authors=_build_authors_list(),
+        max_attempts=max_attempts,
     ).invoke()
 
 
