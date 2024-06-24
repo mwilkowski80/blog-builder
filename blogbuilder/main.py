@@ -13,7 +13,7 @@ from blogbuilder.generate_hugo_articles import GenerateHugoArticlesUseCase
 from blogbuilder.generate_markdown_articles import GenerateMarkdownArticle
 from blogbuilder.generate_raw_articles_use_case import GenerateRawArticlesUseCase, PersistSummaryToFile, \
     GenerateRawArticles2UseCase
-from blogbuilder.llm import OpenAILLM, LLM, LocalLLM, OllamaLLM
+from blogbuilder.llm import OpenAILLM, LLM, LocalLLM, OllamaLLM, LoggedLLM
 from blogbuilder.obtaincontent import obtain_content_from_url_func
 from s8er.cache import FilesystemCache
 from s8er.llm import CachedOpenAI
@@ -59,6 +59,7 @@ WEB_SEARCH_ENGINE_MAP = {
 @click.option('--llm-endpoint')
 @click.option('--ollama-endpoint')
 @click.option('--ollama-extra-args')
+@click.option('--llm-log-file', type=click.Path(dir_okay=False, file_okay=True))
 @click.option('--cache-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
 @click.option('--output-dir', required=True, type=click.Path(dir_okay=True, exists=True, file_okay=False))
 @click.option('--download-timeout', default=10)
@@ -72,10 +73,11 @@ def cli_generate_raw_articles(llm_endpoint: str, ollama_endpoint: str, ollama_ex
                               cache_dir: str, output_dir: str, download_timeout: int,
                               wse: str, topic_generator: str, max_llm_payload: int,
                               topic_generator_max_search_queries: int, sample_countries_count: int,
-                              version: str):
+                              version: str, llm_log_file: Optional[str]):
     llm = build_llm_from_args(llm_endpoint=llm_endpoint,
                               ollama_endpoint=ollama_endpoint,
-                              ollama_extra_args=ollama_extra_args)
+                              ollama_extra_args=ollama_extra_args,
+                              llm_log_file=llm_log_file)
 
     if topic_generator == 'llm':
         topic_generator_func = llm_topic_generator_create_func(
@@ -105,16 +107,21 @@ def cli_generate_raw_articles(llm_endpoint: str, ollama_endpoint: str, ollama_ex
     use_case.invoke()
 
 
-def build_llm_from_args(llm_endpoint: str, ollama_endpoint: str, ollama_extra_args: str) -> LLM:
+def build_llm_from_args(llm_endpoint: Optional[str], ollama_endpoint: Optional[str],
+                        ollama_extra_args: Optional[str], llm_log_file: Optional[str]) -> LLM:
     if llm_endpoint and ollama_endpoint:
         raise ValueError('Only one of --llm-endpoint or --ollama-endpoint can be specified')
     if not llm_endpoint and not ollama_endpoint:
         raise ValueError('One of --llm-endpoint or --ollama-endpoint must be specified')
     if llm_endpoint:
-        return build_local_llm(llm_endpoint)
+        llm = build_local_llm(llm_endpoint)
     else:
         ollama_extra_args = ollama_extra_args or '{}'
-        return build_ollama_endpoint(ollama_endpoint, json.loads(ollama_extra_args))
+        llm = build_ollama_endpoint(ollama_endpoint, json.loads(ollama_extra_args))
+
+    if llm_log_file:
+        llm = LoggedLLM(llm, Path(llm_log_file), [])
+    return llm
 
 
 @cli.command('generate-markdown-articles')
@@ -123,6 +130,7 @@ def build_llm_from_args(llm_endpoint: str, ollama_endpoint: str, ollama_extra_ar
 @click.option('--llm-endpoint')
 @click.option('--ollama-endpoint')
 @click.option('--ollama-extra-args')
+@click.option('--llm-log-file', type=click.Path(dir_okay=False, file_okay=True))
 @click.option('--max-number-of-articles', default=10)
 @click.option('--max-retries-per-article', default=3)
 @click.option('--max-llm-payload', default=12000)
@@ -130,10 +138,11 @@ def cli_generate_markdown_articles(
         raw_articles_dir: str, output_dir: str, llm_endpoint: str,
         ollama_endpoint: str, ollama_extra_args: str,
         max_number_of_articles: int, max_retries_per_article: int,
-        max_llm_payload: int):
+        max_llm_payload: int, llm_log_file: Optional[str]):
     llm = build_llm_from_args(llm_endpoint=llm_endpoint,
                               ollama_endpoint=ollama_endpoint,
-                              ollama_extra_args=ollama_extra_args)
+                              ollama_extra_args=ollama_extra_args,
+                              llm_log_file=llm_log_file)
     GenerateMarkdownArticle(
         raw_articles_dir=raw_articles_dir, output_storage=FilesystemStorage(Path(output_dir)),
         llm=llm, max_number_of_articles=max_number_of_articles,

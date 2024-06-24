@@ -1,3 +1,9 @@
+import csv
+import traceback
+from datetime import datetime
+from pathlib import Path
+from typing import List
+
 import requests
 
 from s8er.llm import CachedOpenAI
@@ -41,3 +47,27 @@ class OllamaLLM(LLM):
 class NoopLLM(LLM):
     def __call__(self, input_str) -> str:
         return input_str
+
+
+class LoggedLLM(LLM):
+    def __init__(self, llm: LLM, log_filepath: Path, extra_args: List[str]) -> None:
+        self._llm = llm
+        self._log_filepath = log_filepath
+        self._extra_args = extra_args
+
+    def __call__(self, input_str) -> str:
+        output = None
+        try:
+            output = self._llm(input_str)
+            self._log(input_str=input_str, output_str=output)
+            return output
+        except:
+            self._log(input_str=input_str,
+                      output_str=output,
+                      exception_str=traceback.format_exc())
+            raise
+
+    def _log(self, input_str: str, output_str: str, exception_str: str = None) -> None:
+        with open(self._log_filepath, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(self._extra_args + [datetime.utcnow().isoformat(), input_str, output_str, exception_str])

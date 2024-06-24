@@ -10,7 +10,7 @@ screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 50 && (while t
 title blog-builder-generate-raw-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && (while true; do (NODE_OPTIONS=--max-old-space-size=32000 ./bin/pipeline.sh 2>&1 | tee ./tmp/output.log); date; sleep 43200; done)'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && (while true; do (NODE_OPTIONS=--max-old-space-size=32000 ./bin/pipeline-docusaurus.sh 2>&1 | tee ./tmp/output.log); date; sleep 43200; done)'
 title pipeline
 split
 focus
