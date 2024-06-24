@@ -45,7 +45,7 @@ class GenerateHugoArticlesUseCase:
             f.write(f'---\n')
             yaml.dump({
                 'title': article.title,
-                'authors': self._select_random_author(),
+                'author': self._select_random_author(),
                 'date': self._article_date.isoformat(),
                 'slug': slug,
             }, f)
