@@ -1,12 +1,12 @@
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 10 && (while true; do ./venv/bin/python -m blogbuilder.main generate-markdown-articles --ollama-endpoint http://localhost:11434/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000; sleep 60; done)'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 10 && (while true; do ./venv/bin/python -m blogbuilder.main generate-markdown-articles --ollama-endpoint http://localhost:11433/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --raw-articles-dir ./data/raw-articles --output-dir ./data/markdown-articles --max-number-of-articles 1000; sleep 60; done)'
 title blog-builder-generate-markdown-articles
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && ./venv/bin/pip install --upgrade -r requirements.txt && (while true; do ./venv/bin/python -m blogbuilder.main generate-raw-articles --ollama-endpoint http://localhost:11434/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000 ; sleep 10; done)'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && ./venv/bin/pip install --upgrade -r requirements.txt && (while true; do ./venv/bin/python -m blogbuilder.main generate-raw-articles --ollama-endpoint http://localhost:11433/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --cache-dir ./data/cache --output-dir ./data/raw-articles --wse google --max-llm-payload 30000 ; sleep 10; done)'
 title blog-builder-generate-raw-articles-google
 split
 focus
-screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 30 && (while true; do ./venv/bin/python -m blogbuilder.main generate-raw-articles --ollama-endpoint http://localhost:11434/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --cache-dir ./data/cache --output-dir ./data/raw-articles --wse ddg --max-llm-payload 30000 ; sleep 10; done)'
+screen bash -c 'cd /media/mw/samsung-850evo/blog-builder && sleep 30 && (while true; do ./venv/bin/python -m blogbuilder.main generate-raw-articles --ollama-endpoint http://localhost:11433/api/generate --ollama-extra-args "{\"model\":\"llama3:8b-instruct-q8_0\"}" --cache-dir ./data/cache --output-dir ./data/raw-articles --wse ddg --max-llm-payload 30000 ; sleep 10; done)'
 title blog-builder-generate-raw-articles-ddg
 split
 focus
