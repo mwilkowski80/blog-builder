@@ -36,7 +36,6 @@ class FilesystemStorage(ArticleStorage):
                 with open(self._storage_dir / fn) as f:
                     try:
                         article_dict = json.load(f)
+                        yield Article.from_dict(article_dict)
                     except json.JSONDecodeError:
-                        self._log.error(f'Error decoding {fn}')
-                        raise
-                yield Article.from_dict(article_dict)
+                        self._log.warning(f'Error decoding {fn}')
