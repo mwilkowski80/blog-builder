@@ -75,7 +75,7 @@ class GenerateHugoArticlesUseCase:
             attempt_index += 1
 
     def _check_stderr_output(self) -> Tuple[int, str]:
-        run_output = run(['hugo'], cwd=self._output_dir, text=True, stderr=STDOUT, stdout=PIPE)
+        run_output = run(['hugo', '--buildFuture'], cwd=self._output_dir, text=True, stderr=STDOUT, stdout=PIPE)
         return run_output.returncode, run_output.stdout
 
     def _select_random_author(self) -> str:
